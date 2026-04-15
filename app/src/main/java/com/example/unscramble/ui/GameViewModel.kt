@@ -16,6 +16,7 @@
 
 package com.example.unscramble.ui
 
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -23,17 +24,25 @@ import androidx.lifecycle.ViewModel
 import androidx.room.Dao
 import com.example.unscramble.data.MAX_NO_OF_WORDS
 import com.example.unscramble.data.SCORE_INCREASE
+import com.example.unscramble.data.WordDatabase
 import com.example.unscramble.data.allWords
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import android.content.Context
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.unscramble.data.WordEntity
+import com.example.unscramble.data.WordRepository
+import kotlinx.coroutines.launch
 
 /**
  * ViewModel containing the app data and methods to process the data
  */
-class GameViewModel : ViewModel() {
+class GameViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val repository: WordRepository
     // Game UI state
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
@@ -43,9 +52,17 @@ class GameViewModel : ViewModel() {
 
     // Set of words used in the game
     private var usedWords: MutableSet<String> = mutableSetOf()
+    private var customWords: List<String> = emptyList()
     private lateinit var currentWord: String
 
     init {
+        val wordDao = WordDatabase.getInstance(application).WordDao()
+        repository = WordRepository(wordDao)
+        viewModelScope.launch {
+            repository.allWords.collect { wordEntities ->
+                customWords = wordEntities.map { it.word }
+            }
+        }
         resetGame()
     }
 
@@ -132,12 +149,21 @@ class GameViewModel : ViewModel() {
 
     private fun pickRandomWordAndShuffle(): String {
         // Continue picking up a new random word until you get one that hasn't been used before
-        currentWord = allWords.random()
+        val combinedWords = allWords + customWords
+        currentWord = combinedWords.random()
         return if (usedWords.contains(currentWord)) {
             pickRandomWordAndShuffle()
         } else {
             usedWords.add(currentWord)
             shuffleCurrentWord(currentWord)
+        }
+    }
+    fun addNewWord(word: String) {
+        if (word.isNotBlank()) {
+            viewModelScope.launch {
+                val entity = WordEntity(word = word)
+                repository.insert(entity)
+            }
         }
     }
 }
