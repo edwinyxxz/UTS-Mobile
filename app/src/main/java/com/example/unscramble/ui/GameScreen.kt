@@ -43,6 +43,9 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +81,7 @@ fun GameScreen(gameViewModel: GameViewModel = viewModel()) {
             style = typography.titleLarge,
         )
         GameLayout(
+            onAddWord = { gameViewModel.addNewWord(it) },
             onUserGuessChanged = { gameViewModel.updateUserGuess(it) },
             wordCount = gameUiState.currentWordCount,
             userGuess = gameViewModel.userGuess,
@@ -151,9 +155,11 @@ fun GameLayout(
     userGuess: String,
     onUserGuessChanged: (String) -> Unit,
     onKeyboardDone: () -> Unit,
+    onAddWord: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val mediumPadding = dimensionResource(R.dimen.padding_medium)
+    var newWordText by remember { mutableStateOf("")}
 
     Card(
         modifier = modifier,
@@ -164,6 +170,21 @@ fun GameLayout(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(mediumPadding)
         ) {
+            OutlinedTextField(
+                value = newWordText,
+                onValueChange = { newWordText = it },
+                label = { Text("Tambah Kata ke Database") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = {
+                    onAddWord(newWordText)
+                    newWordText = ""
+                },
+                modifier = Modifier.padding(top = 8.dp)
+            ){
+                Text("Simpan kata")
+            }
             Text(
                 modifier = Modifier
                     .clip(shapes.medium)
